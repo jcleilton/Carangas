@@ -22,6 +22,32 @@ class CarFormViewController: UIViewController {
     // MARK: - Super Methods
     override func viewDidLoad() {
         super.viewDidLoad()
+        setupView()
+    }
+    
+    // MARK: - Methods
+    private func setupView() {
+        if let car = car {
+            title = "Edição"
+            btAddEdit.setTitle("Editar carro", for: .normal)
+            tfBrand.text = car.brand
+            tfName.text = car.name
+            tfPrice.text = "\(car.price)"
+            scGasType.selectedSegmentIndex = car.gasType
+        }
+    }
+    
+    func checkResult(_ result: Result<Void,APIError>, withError message: String) {
+        switch result {
+        case .success:
+            self.goBack()
+        case .failure:
+            Alert.show(title: "Erro", message: message, presenter: self)
+        }
+    }
+    
+    func goBack() {
+        navigationController?.popViewController(animated: true)
     }
     
     // MARK: - IBActions
@@ -38,14 +64,13 @@ class CarFormViewController: UIViewController {
         if car._id == nil {
             CarAPI.createCar(car) { [weak self] (result) in
                 DispatchQueue.main.async {
-                    self?.navigationController?.popViewController(animated: true)
+                    self?.checkResult(result, withError: "Falha ao cadastrar o carro")
                 }
-                
             }
         } else {
             CarAPI.updateCar(car) { [weak self] (result) in
                 DispatchQueue.main.async {
-                    self?.navigationController?.popViewController(animated: true)
+                    self?.checkResult(result, withError: "Falha ao atualizar o carro")
                 }
             }
         }
