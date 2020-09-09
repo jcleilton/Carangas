@@ -10,11 +10,13 @@ import UIKit
 class CarsTableViewController: UITableViewController {
     
     // MARK: - Properties
-    var cars: [Car] = []
+    var viewModel: CarsListingViewModel = CarsListingViewModel()
 
     // MARK: - Super Methods
     override func viewDidLoad() {
         super.viewDidLoad()
+        viewModel.carsDidUpdate = self.carsDidUpdate
+        refreshControl?.addTarget(self, action: #selector(self.loadCars), for: .valueChanged)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -23,55 +25,50 @@ class CarsTableViewController: UITableViewController {
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        if let carViewController = segue.destination as? CarViewController,
-           let carIndex = tableView.indexPathForSelectedRow?.row {
-            carViewController.car = cars[carIndex]
+        switch segue.destination {
+        case let carViewController as CarViewController:
+            guard let indexPath = tableView.indexPathForSelectedRow else { return }
+            carViewController.viewModel = viewModel.getCarViewModelFor(indexPath: indexPath)
+        case let carFormViewController as CarFormViewController:
+            carFormViewController.viewModel = CarFormViewModel()
+        default:
+            break
+        }
+    }
+    
+    func carsDidUpdate() {
+        DispatchQueue.main.async {
+            self.tableView.reloadData()
+            self.refreshControl?.endRefreshing()
         }
     }
     
     // MARK: - Methods
-    func loadCars() {
-        CarAPI.loadCars { [weak self] (result) in
-            guard let self = self else {return}
-            switch result {
-            case .success(let cars):
-                self.cars = cars
-                DispatchQueue.main.async {
-                    self.tableView.reloadData()
-                }
-            case .failure(let apiError):
-                print(apiError)
-                Alert.show(title: "Erro", message: "Não foi possível realizar a leitura dos carros", presenter: self)
-            }
-        }
+    @objc func loadCars() {
+        viewModel.loadCars()
     }
     
     // MARK: - Table view data source
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return cars.count
+        return viewModel.count
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        let car = cars[indexPath.row]
-        cell.textLabel?.text = car.name
-        cell.detailTextLabel?.text = car.brand
-        return cell
+        if let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as? CarTableViewCell {
+            cell.configure(with: viewModel.cellViewModelFor(indexPath: indexPath))
+            return cell
+        }
+        return UITableViewCell()
     }
     
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
-            let car = cars[indexPath.row]
-            CarAPI.deleteCar(car) { [weak self] (result) in
-                guard let self = self else {return}
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success:
-                        self.cars.remove(at: indexPath.row)
-                            tableView.deleteRows(at: [indexPath], with: .automatic)
-                    case .failure:
-                        Alert.show(title: "Erro", message: "Não foi possível excluir o carro", presenter: self)
-                    }
+            viewModel.deleteCar(at: indexPath) { result in
+                switch result {
+                case .success:
+                    break
+                case .failure:
+                    Alert.show(title: "Erro", message: "Não foi possível excluir o carro.", presenter: self)
                 }
             }
         }

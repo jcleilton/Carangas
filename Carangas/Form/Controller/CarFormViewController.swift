@@ -17,32 +17,36 @@ class CarFormViewController: UIViewController {
     @IBOutlet weak var btAddEdit: UIButton!
     
     // MARK: - Properties
-    var car: Car?
+    var viewModel: CarFormViewModel?
     
     // MARK: - Super Methods
     override func viewDidLoad() {
         super.viewDidLoad()
+        viewModel?.delegate = self
         setupView()
     }
     
     // MARK: - Methods
     private func setupView() {
-        if let car = car {
-            title = "Edição"
-            btAddEdit.setTitle("Editar carro", for: .normal)
-            tfBrand.text = car.brand
-            tfName.text = car.name
-            tfPrice.text = "\(car.price)"
-            scGasType.selectedSegmentIndex = car.gasType
+        if let viewModel = viewModel {
+            title = viewModel.title
+            btAddEdit.setTitle(viewModel.buttonTitle, for: .normal)
+            tfBrand.text = viewModel.brand
+            tfName.text = viewModel.name
+            tfPrice.text = viewModel.price
+            scGasType.selectedSegmentIndex = viewModel.fuelIndex
         }
     }
     
     func checkResult(_ result: Result<Void,APIError>, withError message: String) {
-        switch result {
-        case .success:
-            self.goBack()
-        case .failure:
-            Alert.show(title: "Erro", message: message, presenter: self)
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            switch result {
+            case .success:
+                self.goBack()
+            case .failure(let err):
+            Alert.show(title: "Erro", message: message + " Erro: \(err.errorMessage)", presenter: self)
+            }
         }
     }
     
@@ -52,27 +56,19 @@ class CarFormViewController: UIViewController {
     
     // MARK: - IBActions
     @IBAction func addEdit(_ sender: UIButton) {
-        if car == nil {
-            car = Car()
-        }
-        car?.name = tfName.text!
-        car?.brand = tfBrand.text!
-        car?.price = Double(tfPrice.text!) ?? 0
-        car?.gasType = scGasType.selectedSegmentIndex
-        
-        guard let car = car else {return}
-        if car._id == nil {
-            CarAPI.createCar(car) { [weak self] (result) in
-                DispatchQueue.main.async {
-                    self?.checkResult(result, withError: "Falha ao cadastrar o carro")
-                }
-            }
-        } else {
-            CarAPI.updateCar(car) { [weak self] (result) in
-                DispatchQueue.main.async {
-                    self?.checkResult(result, withError: "Falha ao atualizar o carro")
-                }
-            }
-        }
+        viewModel?.saveCar(name: tfName.text ?? "",
+                           brand: tfBrand.text ?? "",
+                           gasType: scGasType.selectedSegmentIndex,
+                           price: tfPrice.text ?? "")
+    }
+}
+
+extension CarFormViewController: CarFormViewModelDelegate {
+    func onCarCreated(result: Result<Void, APIError>) {
+        self.checkResult(result, withError: "Falha ao criar o carro")
+    }
+    
+    func onCarUpdated(result: Result<Void, APIError>) {
+        self.checkResult(result, withError: "Falha ao atualizar o carro")
     }
 }
