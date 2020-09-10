@@ -16,6 +16,7 @@ class CarViewController: UIViewController {
     
     // MARK: - Properties
     var viewModel: CarViewModel?
+    weak var coordinator: CarCoordinator?
 
     // MARK: - Super Methods
     override func viewDidLoad() {
@@ -35,5 +36,9 @@ class CarViewController: UIViewController {
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         guard let carFormViewController = segue.destination as? CarFormViewController else {return}
         carFormViewController.viewModel = viewModel?.getCarFormViewModel()
+    }
+    
+    deinit {
+        print("CarViewController deinit")
     }
 }

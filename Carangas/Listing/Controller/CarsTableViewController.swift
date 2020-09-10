@@ -7,10 +7,21 @@
 
 import UIKit
 
+protocol CarPresenter: AnyObject {
+    func showCarWith(viewModel: CarViewModel)
+}
+
+protocol CarCreator: AnyObject {
+    func createCar()
+}
+
+typealias CarEnabled = Coordinator & CarPresenter & CarCreator
+
 class CarsTableViewController: UITableViewController {
     
     // MARK: - Properties
     lazy var viewModel = CarsListingViewModel()
+    weak var coordinator: CarEnabled?
 
     // MARK: - Super Methods
     override func viewDidLoad() {
@@ -24,18 +35,6 @@ class CarsTableViewController: UITableViewController {
         loadCars()
     }
     
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        switch segue.destination {
-        case let carViewController as CarViewController:
-            guard let indexPath = tableView.indexPathForSelectedRow else {return}
-            carViewController.viewModel = viewModel.getCarViewModelFor(indexPath)
-        case let carFormViewController as CarFormViewController:
-            carFormViewController.viewModel = CarFormViewModel()
-        default:
-            break
-        }
-    }
-    
     // MARK: - Methods
     func carsDidUpdate() {
         DispatchQueue.main.async {
@@ -46,6 +45,11 @@ class CarsTableViewController: UITableViewController {
     
     @objc func loadCars() {
         viewModel.loadCars()
+    }
+    
+    // MARK: - IBActions
+    @IBAction func createCar(_ sender: UIBarButtonItem) {
+        coordinator?.createCar()
     }
     
     // MARK: - Table view data source
@@ -74,4 +78,14 @@ class CarsTableViewController: UITableViewController {
             }
         }
     }
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let carViewModel = viewModel.getCarViewModelFor(indexPath)
+        coordinator?.showCarWith(viewModel: carViewModel)
+    }
+    
+    deinit {
+        print("CarsTableViewController deinit")
+    }
+
 }

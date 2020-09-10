@@ -18,6 +18,7 @@ class CarFormViewController: UIViewController {
     
     // MARK: - Properties
     var viewModel: CarFormViewModel?
+    weak var coordinator: CarFormCoordinator?
     
     // MARK: - Super Methods
     override func viewDidLoad() {
@@ -55,6 +56,11 @@ class CarFormViewController: UIViewController {
     // MARK: - IBActions
     @IBAction func addEdit(_ sender: UIButton) {
         viewModel?.saveCar(name: tfName.text!, brand: tfBrand.text!, gasType: scGasType.selectedSegmentIndex, price: tfPrice.text!)
+    }
+    
+    deinit {
+        coordinator?.childDidFinish(nil)
+        print("CarFormViewController deinit")
     }
 }
 
